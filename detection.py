@@ -2,7 +2,14 @@ import numpy as np
 import time
 import cv2
 import os
+import numpy as np
 from playsound import playsound
+import threading
+
+# playsound('alarm.wav')
+
+def alert():
+    threading.Thread(target=playsound, args=('alarm.wav',), daemon=True).start()
 
 
 args = {"confidence":0.5, "threshold":0.3}
@@ -16,8 +23,8 @@ np.random.seed(42)
 COLORS = np.random.randint(0, 255, size=(len(LABELS), 3),
 	dtype="uint8")
 
-weightsPath = os.path.abspath("./yolo-coco/yolov3.weights")
-configPath = os.path.abspath("./yolo-coco/yolov3.cfg")
+weightsPath = os.path.abspath("./yolo-coco/yolov3-tiny.weights")
+configPath = os.path.abspath("./yolo-coco/yolov3-tiny.cfg")
 
 # print(configPath, "\n", weightsPath)
 
@@ -29,6 +36,7 @@ vs = cv2.VideoCapture(0)
 writer = None
 (W, H) = (None, None)
 
+last_labels = []
 
 while True:
     # read the next frame from the file
@@ -93,6 +101,7 @@ while True:
     idxs = cv2.dnn.NMSBoxes(boxes, confidences, args["confidence"],
         args["threshold"])
 
+
     # ensure at least one detection exists
     if len(idxs) > 0:
         # loop over the indexes we are keeping
@@ -100,12 +109,10 @@ while True:
             # extract the bounding box coordinates
             (x, y) = (boxes[i][0], boxes[i][1])
             (w, h) = (boxes[i][2], boxes[i][3])
-            flag = False
+            
             if(LABELS[classIDs[i]] in final_classes):
-                if(flag==False):
-                    playsound('alarm.wav')
-                    flag=True
-
+                # playsound('alarm.wav')
+                alert()
                 color = [int(c) for c in COLORS[classIDs[i]]]
                 cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
                 text = "{}: {:.4f}".format(LABELS[classIDs[i]],

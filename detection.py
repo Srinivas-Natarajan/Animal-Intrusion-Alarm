@@ -5,11 +5,41 @@ import os
 import numpy as np
 from playsound import playsound
 import threading
-
-# playsound('alarm.wav')
+import smtplib
+import imghdr
+from email.message import EmailMessage
 
 def alert():
     threading.Thread(target=playsound, args=('alarm.wav',), daemon=True).start()
+
+def send_email(label):
+
+    Sender_Email = "@gmail.com"
+    Reciever_Email = "@gmail.com"
+    # Password = input('Enter your email account password: ')
+    Password = ''   #ENTER GOOGLE APP PASSWORD HERE
+
+    newMessage = EmailMessage()    #creating an object of EmailMessage class
+    newMessage['Subject'] = "Animal Detected" #Defining email subject
+    newMessage['From'] = Sender_Email  #Defining sender email
+    newMessage['To'] = Reciever_Email  #Defining reciever email
+    newMessage.set_content('An animal has been detected') #Defining email body
+
+    with open('images/' + label + '.png', 'rb') as f:
+        image_data = f.read()
+        image_type = imghdr.what(f.name)
+        image_name = f.name[7:]
+
+    newMessage.add_attachment(image_data, maintype='image', subtype=image_type, filename=image_name)
+
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        smtp.login(Sender_Email, Password) #Login to SMTP server
+        smtp.send_message(newMessage)      #Sending email using send_message method by passing EmailMessage object
+
+
+def async_email(label):
+    threading.Thread(target=send_email, args=(label,), daemon=True).start()
+
 
 
 args = {"confidence":0.5, "threshold":0.3}
@@ -36,7 +66,7 @@ vs = cv2.VideoCapture(0)
 writer = None
 (W, H) = (None, None)
 
-last_labels = []
+flag=True
 
 while True:
     # read the next frame from the file
@@ -112,7 +142,10 @@ while True:
             
             if(LABELS[classIDs[i]] in final_classes):
                 # playsound('alarm.wav')
-                alert()
+                if(flag):
+                    alert()
+                    flag=False
+                    async_email(LABELS[classIDs[i]])
                 color = [int(c) for c in COLORS[classIDs[i]]]
                 cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
                 text = "{}: {:.4f}".format(LABELS[classIDs[i]],
@@ -120,6 +153,9 @@ while True:
                 cv2.putText(frame, text, (x, y - 5),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
     
+    else:
+        flag=True
+
     cv2.imshow("Output", frame) 
 
     if cv2.waitKey(1) == ord('q'):
